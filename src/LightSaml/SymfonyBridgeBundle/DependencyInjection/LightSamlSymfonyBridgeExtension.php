@@ -16,6 +16,7 @@ use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\DefinitionDecorator;
 use Symfony\Component\DependencyInjection\Reference;
+use Symfony\Component\Finder\Finder;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 use Symfony\Component\DependencyInjection\Loader;
 
@@ -46,6 +47,7 @@ class LightSamlSymfonyBridgeExtension extends Extension
         $loader->load('service.yml');
         $loader->load('provider.yml');
         $loader->load('profile.yml');
+
 
         $this->configureOwn($container, $config);
         $this->configureSystem($container, $config);
@@ -153,13 +155,20 @@ class LightSamlSymfonyBridgeExtension extends Extension
     {
         if (isset($config['party']['idp']['files'])) {
             $store = $container->getDefinition('lightsaml.party.idp_entity_descriptor_store');
-            foreach ($config['party']['idp']['files'] as $id => $file) {
-                $id = sprintf('lightsaml.party.idp_entity_descriptor_store.file.%s', $id);
+
+            $filesDir = $container->getParameter('kernel.root_dir').'/../web_private/metadata';
+            $finder = new Finder();
+            $finder->files()->in($filesDir)->name('*.xml');
+
+            $i = 0;
+            foreach ($finder as $file) {
+                $id = sprintf('lightsaml.party.idp_entity_descriptor_store.file.%s', $i);
                 $container
                     ->setDefinition($id, new DefinitionDecorator('lightsaml.party.idp_entity_descriptor_store.file'))
-                    ->replaceArgument(0, $file);
+                    ->replaceArgument(0, $file->getPathname());
 
                 $store->addMethodCall('add', [new Reference($id)]);
+                $i++;
             }
         }
     }
